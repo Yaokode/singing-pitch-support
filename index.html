@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>音程練習メーター</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body data-active-tab="practice">
+    <main class="app-shell">
+      <section class="practice-panel" aria-labelledby="app-title">
+        <div class="title-row">
+          <div>
+            <p class="eyebrow">歌声集会 個別練習</p>
+            <h1 id="app-title">音程練習メーター</h1>
+          </div>
+          <div class="safety-badges" aria-label="安全方針">
+            <span>録音なし</span>
+            <span>名前なし</span>
+            <span>端末内</span>
+          </div>
+        </div>
+
+        <nav class="app-tabs" aria-label="モード切り替え">
+          <button class="tab-button active" type="button" data-tab-button="practice">練習</button>
+          <button class="tab-button" type="button" data-tab-button="melody">メロディ設定</button>
+        </nav>
+
+        <div class="control-grid">
+          <label class="field">
+            <span>目標の音</span>
+            <select id="target-note"></select>
+          </label>
+
+          <label class="field">
+            <span>判定の幅</span>
+            <select id="tolerance">
+              <option value="60">ひろめ</option>
+              <option value="40" selected>ふつう</option>
+              <option value="25">せまめ</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>マイク感度</span>
+            <select id="mic-sensitivity">
+              <option value="1.2">ふつう</option>
+              <option value="1.8" selected>高め</option>
+              <option value="2.4">かなり高め</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>歌う高さ</span>
+            <select id="transpose">
+              <option value="0" selected>楽譜どおり</option>
+              <option value="-5">少し低め</option>
+              <option value="-12">1オクターブ下</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>オクターブ補正</span>
+            <select id="octave-correction">
+              <option value="on" selected>使う</option>
+              <option value="off">使わない</option>
+            </select>
+          </label>
+
+          <div class="button-row" aria-label="操作">
+            <button id="play-target" class="secondary-button" type="button">目標音</button>
+            <button id="start-mic" class="primary-button" type="button">マイク開始</button>
+            <button id="stop-mic" class="secondary-button" type="button" disabled>停止</button>
+          </div>
+        </div>
+
+        <section class="phrase-panel" aria-labelledby="phrase-title" data-tab-panel="melody">
+          <div class="phrase-title-row">
+            <h2 id="phrase-title">フレーズ練習</h2>
+            <div class="phrase-buttons" aria-label="フレーズ操作">
+              <button id="play-phrase" class="primary-button" type="button">フレーズ開始</button>
+              <button id="stop-phrase" class="secondary-button" type="button" disabled>停止</button>
+            </div>
+          </div>
+
+          <div class="phrase-grid">
+            <label class="field">
+              <span>曲プリセット</span>
+              <select id="song-preset"></select>
+            </label>
+
+            <label class="field">
+              <span>テンポ</span>
+              <input id="phrase-bpm" type="number" min="40" max="160" step="1" value="72" inputmode="numeric">
+            </label>
+
+            <label class="field">
+              <span>ガイド音</span>
+              <select id="guide-sound">
+                <option value="on" selected>鳴らす</option>
+                <option value="off">なし</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>ガイド音量</span>
+              <select id="guide-volume">
+                <option value="0.24">ふつう</option>
+                <option value="0.36" selected>大きめ</option>
+                <option value="0.48">かなり大きめ</option>
+              </select>
+            </label>
+
+            <label class="field phrase-input-field">
+              <span>音列</span>
+              <textarea id="phrase-input" rows="2"></textarea>
+            </label>
+          </div>
+
+          <div class="melody-builder" aria-label="メロディ入力ボタン">
+            <div class="builder-controls">
+              <label class="field">
+                <span>音の高さ</span>
+                <select id="builder-octave">
+                  <option value="3">低め 3</option>
+                  <option value="4" selected>ふつう 4</option>
+                  <option value="5">高め 5</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>長さ</span>
+                <select id="builder-beats">
+                  <option value="0.5">半拍</option>
+                  <option value="1" selected>1拍</option>
+                  <option value="1.5">1.5拍</option>
+                  <option value="2">2拍</option>
+                  <option value="4">4拍</option>
+                </select>
+              </label>
+
+              <button id="undo-note" class="secondary-button" type="button">1つ戻す</button>
+              <button id="clear-phrase" class="secondary-button" type="button">消す</button>
+            </div>
+
+            <div class="note-buttons" aria-label="音を追加">
+              <button type="button" data-note-button="ド">ド</button>
+              <button type="button" data-note-button="レ">レ</button>
+              <button type="button" data-note-button="ミ">ミ</button>
+              <button type="button" data-note-button="ファ">ファ</button>
+              <button type="button" data-note-button="ソ">ソ</button>
+              <button type="button" data-note-button="ラ">ラ</button>
+              <button type="button" data-note-button="シ">シ</button>
+              <button type="button" data-note-button="休">休</button>
+            </div>
+          </div>
+
+          <div class="phrase-progress" aria-hidden="true">
+            <div id="phrase-progress-bar"></div>
+          </div>
+          <div id="staff-preview" class="staff-preview" aria-label="楽譜風プレビュー"></div>
+          <div id="phrase-steps" class="phrase-steps" aria-label="フレーズの音"></div>
+        </section>
+
+        <div class="meter-area" aria-live="polite">
+          <div class="target-note-card">
+            <span class="label">目標</span>
+            <strong id="target-name">ド4</strong>
+            <span id="target-hz">261.6 Hz</span>
+          </div>
+
+          <div id="result" class="result waiting">マイクを開始してください</div>
+          <div id="detail" class="detail">小さい声やハミングで、音を探す練習から始めます。</div>
+        </div>
+      </section>
+
+      <section class="status-panel" aria-label="現在の状態">
+        <div class="status-item">
+          <span>今の音</span>
+          <strong id="current-note">--</strong>
+        </div>
+        <div class="status-item">
+          <span>高さ</span>
+          <strong id="current-hz">--</strong>
+        </div>
+        <div class="status-item pitch-status">
+          <span>音の高さ</span>
+          <div class="pitch-meter" aria-hidden="true">
+            <div class="scale-board">
+              <div id="scale-rows" class="scale-rows"></div>
+              <div id="target-marker" class="scale-marker target-marker">
+                <span>目標</span>
+              </div>
+              <div id="voice-marker" class="scale-marker voice-marker">
+                <span>今の声</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="status-item">
+          <span>声の大きさ</span>
+          <div class="volume-bar" aria-hidden="true">
+            <div id="volume-level"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="support-panel" aria-label="次の一回">
+        <h2>次の一回</h2>
+        <p id="coach-message">今は声の大きさより、音を聴いて近づける時間です。</p>
+      </section>
+    </main>
+
+    <script src="./main.js"></script>
+  </body>
+</html>
