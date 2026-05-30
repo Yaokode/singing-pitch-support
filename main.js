@@ -77,6 +77,7 @@ const elements = {
   phraseBpm: document.querySelector("#phrase-bpm"),
   guideSound: document.querySelector("#guide-sound"),
   guideVolume: document.querySelector("#guide-volume"),
+  speakerGuard: document.querySelector("#speaker-guard"),
   phraseInput: document.querySelector("#phrase-input"),
   builderOctave: document.querySelector("#builder-octave"),
   builderBeats: document.querySelector("#builder-beats"),
@@ -267,11 +268,7 @@ async function startMic() {
   try {
     const audioContext = await ensureAudioContext();
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: { ideal: false },
-        noiseSuppression: { ideal: false },
-        autoGainControl: { ideal: false }
-      }
+      audio: getMicAudioConstraints()
     });
 
     stopMic(false);
@@ -308,6 +305,48 @@ async function startMic() {
     console.warn(error);
     return false;
   }
+}
+
+function getMicAudioConstraints() {
+  const guardOn = elements.speakerGuard.value === "on";
+
+  if (guardOn) {
+    return {
+      echoCancellation: { ideal: true },
+      noiseSuppression: { ideal: true },
+      autoGainControl: { ideal: false }
+    };
+  }
+
+  return {
+    echoCancellation: { ideal: false },
+    noiseSuppression: { ideal: false },
+    autoGainControl: { ideal: false }
+  };
+}
+
+async function handleSpeakerGuardChange() {
+  const guardOn = elements.speakerGuard.value === "on";
+
+  if (state.isListening) {
+    stopMic(false);
+    const micReady = await startMic();
+
+    if (!micReady) {
+      return;
+    }
+  }
+
+  setResult(
+    "waiting",
+    guardOn ? "本体音対策を使います" : "音程優先に戻しました",
+    guardOn
+      ? "端末のスピーカー音を拾いにくくする設定でマイクを使います。"
+      : "声の高さをできるだけそのまま拾う設定でマイクを使います。",
+    guardOn
+      ? "反応が不安定な時は、音量を小さめにするか、イヤホンを使います。"
+      : "ガイド音を拾う時は、本体音対策を試します。"
+  );
 }
 
 async function playPhrase() {
@@ -1173,6 +1212,9 @@ elements.micSensitivity.addEventListener("change", () => {
     "声の大きさの反応を見ながら調整します。",
     "反応しにくい時は、高めから試します。"
   );
+});
+elements.speakerGuard.addEventListener("change", () => {
+  handleSpeakerGuardChange();
 });
 elements.transpose.addEventListener("change", () => {
   updateTargetDisplay();

@@ -240,7 +240,7 @@ body[data-active-tab="practice"] .phrase-panel {
 
 .phrase-grid {
   display: grid;
-  grid-template-columns: minmax(150px, 0.9fr) minmax(82px, 0.42fr) minmax(96px, 0.5fr) minmax(110px, 0.56fr) minmax(260px, 2fr);
+  grid-template-columns: minmax(140px, 0.9fr) minmax(76px, 0.4fr) minmax(88px, 0.48fr) minmax(104px, 0.54fr) minmax(118px, 0.62fr) minmax(240px, 2fr);
   gap: 12px;
 }
 
