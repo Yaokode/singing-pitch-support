@@ -24,8 +24,8 @@ const songPresets = [
   {
     id: "moeroyo-starter",
     title: "燃えろよ燃えろ（確認用）",
-    bpm: 96,
-    phrase: "ソ4:1 ソ4:1 ミ4:1 ミ4:1 ソ4:1 ソ4:1 ミ4:2 休:0.5 ソ4:1 ラ4:1 ソ4:1 ミ4:1 レ4:2"
+    bpm: 80,
+    phrase: "ソ4:1.5 ファ4:0.5 ミ4:0.5 ソ4:0.5 ド5:0.5 レ5:0.5 ミ5:2 ド5:1 休:1 レ5:0.5 ド5:0.5 シ4:0.5 レ3:0.5 ド5:1 ラ4:1 ファ4:1 レ4:2 ミ4:1.5 ド4:0.5 ミ4:0.5 ミ4:0.5 ミ4:0.5 ソ4:0.5 ファ4:1 休:1 レ4:1.5 ファ4:0.5 ファ4:0.5 ソ4:0.5 ソ4:0.5 ファ4:0.5 ミ4:3"
   },
   {
     id: "toki-yama-starter",
@@ -379,7 +379,7 @@ async function playPhrase() {
     state.phrase.review = createEmptyPhraseReview(phrase.events);
     state.phrase.currentIndex = -1;
     state.phrase.totalSeconds = phrase.totalSeconds;
-    state.phrase.audioStartAt = audioContext.currentTime + 0.12;
+    state.phrase.audioStartAt = audioContext.currentTime + 0.35;
     lockScaleToPhrase(phrase.events);
     elements.playPhrase.disabled = true;
     elements.stopPhrase.disabled = false;
@@ -580,7 +580,7 @@ function readPitchLoop(timestamp) {
 
   state.animationId = requestAnimationFrame(readPitchLoop);
 
-  if (timestamp - state.lastReadAt < 95) {
+  if (timestamp - state.lastReadAt < 70) {
     return;
   }
   state.lastReadAt = timestamp;
@@ -640,7 +640,7 @@ function detectPitch(input, sampleRate, rms) {
     cmnd[tau] = runningSum === 0 ? 1 : (difference[tau] * tau) / runningSum;
   }
 
-  const threshold = 0.14;
+  const threshold = 0.16;
   let tauEstimate = -1;
 
   for (let tau = minTau; tau <= maxTau; tau += 1) {
@@ -661,7 +661,7 @@ function detectPitch(input, sampleRate, rms) {
   const frequency = sampleRate / betterTau;
   const clarity = Math.max(0, Math.min(1, 1 - cmnd[tauEstimate]));
 
-  if (frequency < minFrequency || frequency > maxFrequency || clarity < 0.68) {
+  if (frequency < minFrequency || frequency > maxFrequency || clarity < 0.62) {
     return { frequency: null, clarity, reason: "unstable" };
   }
 
@@ -727,7 +727,7 @@ function updateDisplayFromDetection(detection, rms) {
   elements.currentNote.textContent = noteName;
   elements.currentHz.textContent = `${displayFrequency.toFixed(1)} Hz`;
   updateScaleMarkers(targetForJudgement.frequency, displayFrequency);
-  recordPhraseResult(cents, displayFrequency, noteName);
+  recordPhraseResult(cents, displayFrequency, noteName, detection.clarity);
 
   if (Math.abs(cents) <= tolerance) {
     setResult(
@@ -1065,13 +1065,18 @@ function createEmptyPhraseReview(events) {
     samples: 0,
     sumCents: 0,
     sumFrequency: 0,
+    values: [],
     latestNoteName: "--",
     latestFrequency: null
   }));
 }
 
-function recordPhraseResult(cents, frequency, noteName) {
+function recordPhraseResult(cents, frequency, noteName, clarity) {
   if (!state.phrase.isPlaying || state.phrase.currentIndex < 0) {
+    return;
+  }
+
+  if (!isPhraseRecordTimingReady()) {
     return;
   }
 
@@ -1084,13 +1089,50 @@ function recordPhraseResult(cents, frequency, noteName) {
   review.samples += 1;
   review.sumCents += cents;
   review.sumFrequency += frequency;
+  review.values.push({ cents, frequency, noteName, clarity });
   review.latestNoteName = noteName;
   review.latestFrequency = frequency;
   updatePhraseReviewDisplay();
 }
 
+function isPhraseRecordTimingReady() {
+  const event = getCurrentPhraseEvent();
+
+  if (!event || event.isRest || !state.audioContext) {
+    return false;
+  }
+
+  const phraseElapsed = state.audioContext.currentTime - state.phrase.audioStartAt;
+  const noteElapsed = phraseElapsed - event.startSeconds;
+  const startSkip = Math.min(0.22, event.durationSeconds * 0.35);
+  const endSkip = Math.min(0.08, event.durationSeconds * 0.18);
+
+  return noteElapsed >= startSkip && noteElapsed <= event.durationSeconds - endSkip;
+}
+
 function finalizePhraseReview() {
   updatePhraseReviewDisplay(true);
+}
+
+function summarizePhraseReview(review) {
+  if (!review.values.length) {
+    return null;
+  }
+
+  const byCents = [...review.values].sort((a, b) => a.cents - b.cents);
+  const middle = Math.floor(byCents.length / 2);
+  const medianSample = byCents.length % 2 === 0
+    ? {
+        cents: (byCents[middle - 1].cents + byCents[middle].cents) / 2,
+        frequency: (byCents[middle - 1].frequency + byCents[middle].frequency) / 2
+      }
+    : byCents[middle];
+
+  return {
+    cents: medianSample.cents,
+    frequency: medianSample.frequency,
+    noteName: frequencyToNearestNote(medianSample.frequency)
+  };
 }
 
 function updatePhraseReviewDisplay(showMissed = false) {
@@ -1123,10 +1165,14 @@ function updatePhraseReviewDisplay(showMissed = false) {
       return;
     }
 
-    const averageCents = review.sumCents / review.samples;
-    const averageFrequency = review.sumFrequency / review.samples;
+    const summary = summarizePhraseReview(review);
+
+    if (!summary) {
+      return;
+    }
+
     const voiceTop = midiToStaffTop(
-      frequencyToMidi(averageFrequency),
+      frequencyToMidi(summary.frequency),
       state.phrase.staffLowMidi,
       state.phrase.staffHighMidi
     );
@@ -1136,16 +1182,16 @@ function updatePhraseReviewDisplay(showMissed = false) {
       voiceNote.classList.add("visible");
     }
 
-    if (Math.abs(averageCents) <= tolerance) {
-      reviewLabel.textContent = `近 ${review.latestNoteName}`;
+    if (Math.abs(summary.cents) <= tolerance) {
+      reviewLabel.textContent = `近 ${summary.noteName}`;
       step.classList.add("review-close");
       voiceNote?.classList.add("review-close");
-    } else if (averageCents < 0) {
-      reviewLabel.textContent = `低 ${review.latestNoteName}`;
+    } else if (summary.cents < 0) {
+      reviewLabel.textContent = `低 ${summary.noteName}`;
       step.classList.add("review-low");
       voiceNote?.classList.add("review-low");
     } else {
-      reviewLabel.textContent = `高 ${review.latestNoteName}`;
+      reviewLabel.textContent = `高 ${summary.noteName}`;
       step.classList.add("review-high");
       voiceNote?.classList.add("review-high");
     }
